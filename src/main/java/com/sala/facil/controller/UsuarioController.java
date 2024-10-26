@@ -28,22 +28,40 @@ public class UsuarioController {
 
     @Autowired
     private UsuarioRepository repository;
-    
+
     @GetMapping
-    public List<Usuario> getUsuarios(){
+    public List<Usuario> getUsuarios() {
         return service.findAll();
     }
 
-    //Salvar novo usuario
+    // Salvar novo usuario
     @PostMapping
-    public Usuario saveUsuario(@RequestBody Usuario usuario){
+    public ResponseEntity<?> saveUsuario(@RequestBody Usuario usuario) {
+        if (usuario == null || usuario.getEmail() == null || usuario.getCpf() == null) {
+            return ResponseEntity.badRequest().body("Dados do usuário não podem ser nulos.");
+        }
+
+        // Verificar se já existe um usuário com o mesmo e-mail
+        Optional<Usuario> usuarioExistente = repository.findByEmail(usuario.getEmail());
+        if (usuarioExistente.isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Já existe um usuário com este e-mail: " + usuario.getEmail());
+        }
+
+        // Verificar se já existe um usuário com o mesmo CPF
+        Optional<Usuario> usuarioPorCpf = repository.findByCpf(usuario.getCpf());
+        if (usuarioPorCpf.isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Já existe um usuário com este CPF: " + usuario.getCpf());
+        }
+
         Usuario usuarioSalvo = service.saveUsuario(usuario);
-        return usuarioSalvo;
+        return ResponseEntity.ok(usuarioSalvo);
     }
 
-    //findByID
+    // findByID
     @GetMapping("/{id}")
-    public ResponseEntity<?> findUsuarioById(@PathVariable Long id){
+    public ResponseEntity<?> findUsuarioById(@PathVariable Long id) {
         Usuario usuario = service.findById(id);
         if (usuario == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuario não encontrado com ID: " + id);
@@ -51,15 +69,15 @@ public class UsuarioController {
         return ResponseEntity.ok(usuario);
     }
 
-    //Delete
+    // Delete
     @DeleteMapping("/{id}")
-    public void deleteById(@PathVariable Long id){
+    public void deleteById(@PathVariable Long id) {
         service.deleteById(id);
     }
 
-    //Editar
+    // Editar
     @PutMapping("/{id}")
-    public ResponseEntity<Usuario> atualizarUsuario(@PathVariable Long id, @RequestBody Usuario usuarioAtualizado){
+    public ResponseEntity<Usuario> atualizarUsuario(@PathVariable Long id, @RequestBody Usuario usuarioAtualizado) {
 
         Optional<Usuario> usuarioOptional = repository.findById(id);
 
@@ -68,16 +86,16 @@ public class UsuarioController {
         }
 
         Usuario usuarioExistente = usuarioOptional.get();
-        
+
         // Atualizar os campos do usuário
         usuarioExistente.setNome(usuarioAtualizado.getNome());
         usuarioExistente.setEmail(usuarioAtualizado.getEmail());
         usuarioExistente.setCpf(usuarioAtualizado.getCpf());
         usuarioExistente.setPhone(usuarioAtualizado.getPhone());
-        
+
         // Salvar as mudanças no banco de dados
         Usuario usuarioSalvo = repository.save(usuarioExistente);
-        
+
         // Retornar o usuário atualizado
         return ResponseEntity.ok(usuarioSalvo);
     }
